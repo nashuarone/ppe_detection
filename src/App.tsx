@@ -3,13 +3,12 @@ import axios from "axios";
 import "./App.css";
 
 function App() {
-  const [count, setCount] = useState(0);
   const [isEnabled, setEnabled] = useState(false);
+  const [hat, setHat] = useState("");
+  const [vest, setVest] = useState("");
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const roboflowUrl =
-    "https://detect.roboflow.com/construction-site-safety/27?api_key=SxSeyiG6uOChdjTs3YEV&confidence=0.01";
 
   const startStream = () => {
     navigator.mediaDevices
@@ -56,6 +55,8 @@ function App() {
   };
 
   const sendToCheckPPE = () => {
+    setVest("");
+    setHat("");
     const image = canvasRef.current?.toDataURL("image/png");
     axios({
       method: "POST",
@@ -70,6 +71,20 @@ function App() {
     })
       .then(function (response) {
         console.log(response.data);
+        response.data.predictions.forEach((ppe) => {
+          if (ppe.class === "Hardhat") {
+            setHat("green");
+          }
+          if (ppe.class === "Safety Vest") {
+            setVest("green");
+          }
+          if (ppe.class === "NO-Safety Vest") {
+            setVest("red");
+          }
+          if (ppe.class === "NO-Hardhat") {
+            setHat("red");
+          }
+        });
       })
       .catch(function (error) {
         console.log(error.message);
@@ -79,16 +94,20 @@ function App() {
   useEffect(() => {
     stopStream();
     if (isEnabled) startStream();
-    console.log(canvasRef.current?.toDataURL("image/png"));
+    if (!isEnabled) {
+      setVest("");
+      setHat("");
+    }
   }, [isEnabled]);
 
   return (
     <>
-      {isEnabled && <div>You are online</div>}
       <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
+        {isEnabled && <div className="online">online</div>}
+        <div className="ppe-status">
+          {hat && <div className={hat}>Hardhat</div>}
+          {vest && <div className={vest}>Safety Vest</div>}
+        </div>
       </div>
       <div className="container">
         <video
@@ -99,31 +118,6 @@ function App() {
           autoPlay
           ref={videoRef}
         ></video>
-        {/* <iframe
-          ref={videoRef}
-          allowFullScreen
-          allow="display-capture"
-          src="http://136.169.226.73/1710155536/embed.html?realtime=true&amp;token=bc01f25597cd40e394c398c7bbf0c7db&amp;mute=true?width=640&amp;height=480"
-        >
-          <video
-            // ref={videoRef}
-            data-html5-video=""
-            muted
-            poster="http://136.169.226.73/1710155536/preview.mp4?token=bc01f25597cd40e394c398c7bbf0c7db"
-            preload="metadata"
-            crossOrigin="anonymous"
-            playsInline
-            src="blob:http://136.169.226.73/410c52a3-a6b0-44c3-b2b1-b4450e1e888e"
-          ></video>
-        </iframe> */}
-        {/* <iframe
-          ref={videoRef}
-          allowFullScreen
-          allow="display-capture"
-          width="640"
-          height="480"
-          src="https://ucams.ufanet.ru/api/internal/embed/1703069068KXZ73/?ttl=3600&amp;autoplay=true&amp;mute=true?width=640&amp;height=480"
-        ></iframe> */}
       </div>
       <button onClick={() => setEnabled(!isEnabled)}>
         {isEnabled ? "Off" : "ON"}
